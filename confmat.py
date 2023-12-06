@@ -21,8 +21,6 @@ class BinaryConfusionMatrix:
         tags = (self.pos_tag, self.neg_tag)
         if(truth not in tags or prediction not in tags):
             raise ValueError
-        # print("\n", truth, prediction)
-        # print("---------")
         if(prediction == self.pos_tag):
             if prediction == truth:
                 self.tp += 1

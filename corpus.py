@@ -11,7 +11,7 @@ class Corpus:
                 continue
             with open(os.path.join(self.path, file_name), 'r', encoding='UTF-8') as file:
                 content = file.read()
-            yield [file_name, content]
+            yield file_name, content
 
     def __str__(self) -> str:
         return "Lebron James"

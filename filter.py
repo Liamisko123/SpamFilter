@@ -1,7 +1,8 @@
 import os
 import utils
+import re
+import email as email_lib
 from corpus import Corpus
-
 
 class MyFiler:
 
@@ -14,26 +15,34 @@ class MyFiler:
     def test(self, path):
         test_corpus = Corpus(path)
         predictions = {}
-        for file in test_corpus.emails():
-            ## some logic for <content> here ##
-            file_name, content = file
+        for file_name, content in test_corpus.emails():
             predictions[file_name] = self.evaluate_email(content)
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
 
     def evaluate_email(self, content):
         email = Email(content)
-        print(email.sender)
-
+        print(10*"-" + email.sender)
+        print(email.subject, end="\n\n\n")
+        # print(email.body)
 
         return "OK"
 
 
 class Email:
     def __init__(self, content) -> None:
-        self.subject = None
         self.sender = None
-        self.decompose_email(content)
+        self.subject = None
+        self.body = None
+        self.parse_email(content)
 
-    def decompose_email(self, content):
-        #find stuff like sender and whatnot
-        pass
+    def parse_email(self, content):
+        email_object = email_lib.message_from_string(content)
+        self.sender = email_object['from']
+        self.subject = email_object['subject']
+        
+        # TODO: possibly a multipart mail
+        # if email_object.is_multipart():....
+        self.body = email_object.get_payload()
+        # TODO: parse html
+        # self.body = re.sub("<.*>", "", self.body)
+

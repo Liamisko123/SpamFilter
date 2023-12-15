@@ -1,17 +1,8 @@
 import os
 from random import choice
 from corpus import Corpus
+from basefilter import Filter
 import utils
-
-class Filter:
-    def __init__(self) -> None:
-        pass
-        
-    def train(self, path):
-        pass
-
-    def test(self, path):
-        pass
 
 class NaiveFilter(Filter):
     def test(self, path):

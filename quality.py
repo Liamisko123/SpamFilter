@@ -12,3 +12,5 @@ def compute_quality_for_corpus(corpus_dir):
     stats.compute_from_dicts(truth, prediction)
     d = stats.as_dict()
     return quality_score(d["tp"], d["tn"], d["fp"], d["fn"])
+
+print(compute_quality_for_corpus(os.path.join(os.getcwd(), '1')))

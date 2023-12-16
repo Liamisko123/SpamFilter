@@ -22,9 +22,8 @@ class MyFiler:
     def evaluate_email(self, content):
         email = Email(content)
         print(10*"-" + email.sender)
+        print(email.body)
         print(email.subject, end="\n\n\n")
-        # print(email.body)
-
         return "OK"
 
 
@@ -32,7 +31,7 @@ class Email:
     def __init__(self, content) -> None:
         self.sender = None
         self.subject = None
-        self.body = None
+        self.body = ""
         self.parse_email(content)
 
     def parse_email(self, content):
@@ -40,9 +39,19 @@ class Email:
         self.sender = email_object['from']
         self.subject = email_object['subject']
         
-        # TODO: possibly a multipart mail
-        # if email_object.is_multipart():....
-        self.body = email_object.get_payload()
+        # TODO: possibly a multipart mail => toto som dal takzvane ctrl-c ctrl-v
+        if email_object.is_multipart():
+            for part in email_object.walk():
+                ctype = part.get_content_type()
+                cdispo = str(part.get('Content-Disposition'))
+
+                # skip any text/plain (txt) attachments
+                if ctype == 'text/plain' and 'attachment' not in cdispo:
+                    self.body += part.get_payload()  # decode
+                    break
+        else:
+            self.body = email_object.get_payload()
+
         # TODO: parse html
-        # self.body = re.sub("<.*>", "", self.body)
+        self.body = re.sub(r"<[^>]*>", "", self.body)
 

@@ -3,6 +3,7 @@ import utils
 import re
 import email as email_lib
 from corpus import Corpus
+from collections import Counter
 
 class MyFiler:
 
@@ -10,7 +11,17 @@ class MyFiler:
         pass
         
     def train(self, path):
-        pass
+        self.most_frequent_words = Counter()
+        train_corpus = Corpus(path)
+        truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
+        for file_name, content in train_corpus.emails():
+            if truth[file_name] == "OK":
+                continue
+            email = Email(content)
+            self.most_frequent_words += email.word_frequencies_in_body()
+
+        print(self.most_frequent_words.most_common(150))
+            
 
     def test(self, path):
         test_corpus = Corpus(path)
@@ -21,9 +32,11 @@ class MyFiler:
 
     def evaluate_email(self, content):
         email = Email(content)
+        
         print(10*"-" + email.sender)
         print(email.body)
         print(email.subject, end="\n\n\n")
+        
         return "OK"
 
 
@@ -54,4 +67,8 @@ class Email:
 
         # TODO: parse html
         self.body = re.sub(r"<[^>]*>", "", self.body)
+
+    def word_frequencies_in_body(self):
+        freq = Counter(self.body.split())
+        return freq
 

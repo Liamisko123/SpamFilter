@@ -3,4 +3,5 @@ import os
 from filter import MyFiler as filter
 
 new = filter()
-new.test(os.path.join(os.getcwd(), '1'))
+# new.test(os.path.join(os.getcwd(), '1'))
+new.train(os.path.join(os.getcwd(), '1'))

@@ -8,6 +8,14 @@ from collections import Counter
 class MyFiler:
 
     def __init__(self) -> None:
+        params = {
+            "relative_word_freq": 0,
+            "name_number": 0,
+            "mail_length": 0,
+            "contains_html": 0,
+            "in_blacklist": 0,
+            "odd_sending_hours": 0,
+        }
         pass
         
     def train(self, path):

@@ -15,20 +15,27 @@ class MyFiler:
             "contains_html": 0,
             "in_blacklist": 0,
             "odd_sending_hours": 0,
+            "hypertext": 0
         }
         pass
         
     def train(self, path):
-        self.most_frequent_words = Counter()
+        self.freq_spam = Counter()
+        self.freq_ham = Counter()
         train_corpus = Corpus(path)
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
         for file_name, content in train_corpus.emails():
             if truth[file_name] == "OK":
-                continue
-            email = Email(content)
-            self.most_frequent_words += email.word_frequencies_in_body()
+                email = Email(content)
+                self.freq_ham += email.word_frequencies_in_body()
+            else:
+                email = Email(content)
+                self.freq_spam += email.word_frequencies_in_body()
 
-        print(self.most_frequent_words.most_common(150))
+        self.rel_freq = Counter()
+        for key, value in self.freq_spam.most_common(100):
+            self.rel_freq[key] = self.freq_spam[key] / (self.freq_spam[key] + self.freq_ham[key])
+        print(self.rel_freq.most_common(100))
             
 
     def test(self, path):
@@ -72,11 +79,10 @@ class Email:
                     break
         else:
             self.body = email_object.get_payload()
-
         # TODO: parse html
         self.body = re.sub(r"<[^>]*>", "", self.body)
 
     def word_frequencies_in_body(self):
-        freq = Counter(self.body.split())
+        freq = Counter(self.body.lower().strip().split())
         return freq
 

@@ -10,6 +10,9 @@ def sigmoid_dx(x):
     sigmoid_x = sigmoid(x)
     return sigmoid_x * (1 - sigmoid_x)
 
+# def sigmoid_dx(x):
+#     return x * (1 - x)
+
 def relu_dx(x):
     return np.where(x > 0, 1, 0)
 

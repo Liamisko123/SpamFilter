@@ -57,43 +57,47 @@ class NN:
             yield neuron.a
 
     def propagate_backwards(self, desired_output):
+        # TODO: brazko robim absolutny freestyle a vyzera ze to nefunguje(v test_nn neni uplne ze pekny vysledok) 
+        # checknem to zajtra ale principialne som to robil podla vzorcov z tohoto
+        # => https://brilliant.org/wiki/backpropagation/#:~:text=Backpropagation%2C%20short%20for%20%22backward%20propagation,to%20the%20neural%20network's%20weights.
         learning_rate = 0.2
         predicted_output = self.layers[-1][0].a
         for layer_idx in range(len(self.layers) - 1, 0, -1):
             for neuron_idx in range(len(self.layers[layer_idx])):
-                neuron = self.layers[layer_idx][neuron_idx]
                 # gradient = neuron_error * output(a) of the previous layer
                 # new weight/bias value = old - learning_rate * gradient
 
+                neuron = self.layers[layer_idx][neuron_idx]
                 # calculate error for neuron in last layer
                 if layer_idx == len(self.layers) - 1:
-                    activation_dx = sigmoid_dx(neuron.a)
+                    activation_dx = sigmoid_dx(neuron.z)
                     loss_dx = loss_function_dx(desired_output, predicted_output)
                     neuron.error = activation_dx * loss_dx
+
+                    # calculate gradient for weights + adjust values
+                    for weight_idx in range(len(neuron.weights)):
+                        gradient = neuron.error * self.layers[layer_idx - 1][weight_idx].a
+                        neuron.weights[weight_idx] -= learning_rate * gradient
+                    # adjust bias
+                    gradient = neuron.error
+                    neuron.bias -= learning_rate * gradient
                     
                 # calculate error for neuron in hidden layer
                 else:
-                    # TODO: Calculate error for non-last layer neuron
-                    # na toto uz nemam nervy sry mate :D uvidim zajtra ci sa podari
-                    # davam trz len freestyle
-                    error = 0
+                    error_sum = 0
                     for neuron_next_idx in range(len(self.layers[layer_idx + 1])):
                         neuron_next = self.layers[layer_idx + 1][neuron_next_idx]
                         error_next = neuron_next.error
-                        a_dx = neuron_next.weights[neuron_idx] * sigmoid_dx(neuron.a)
-                        error += error_next * a_dx
-                    neuron.error = error
-                    # end of freestyle pls check 
-                    # => https://brilliant.org/wiki/backpropagation/#:~:text=Backpropagation%2C%20short%20for%20%22backward%20propagation,to%20the%20neural%20network's%20weights.
-                    # presne v polovici tam pisu ako vypocitat error pre neuron v hidden layer
+                        error_sum += error_next * neuron_next.weights[neuron_idx]
+                    neuron.error = error_sum * sigmoid_dx(neuron.z)
 
-                # calculate gradient for weights + adjust values
-                for weight_idx in range(len(neuron.weights)):
-                    gradient = neuron.error * neuron.weights[weight_idx]
-                    neuron.weights[weight_idx] -= learning_rate * gradient
-                # adjust bias
-                gradient = neuron.error * neuron.bias
-                neuron.bias -= learning_rate * gradient
+                    # calculate gradient for weights + adjust values
+                    for weight_idx in range(len(neuron.weights)):
+                        gradient = neuron.error * self.layers[layer_idx - 1][weight_idx].a
+                        neuron.weights[weight_idx] -= learning_rate * gradient
+                    # adjust bias
+                    gradient = neuron.error * neuron.bias
+                    neuron.bias -= learning_rate * gradient
     
     def print_network(self):
         for i in range(len(self.layers)):
@@ -117,10 +121,6 @@ class Neuron:
         self.z = z + self.bias
 
         self.a = sigmoid(z)
-        if is_output:
-            self.a = int(self.a > 0.5)
-        # mozno sa to z aj a(namiesto len value) bude hodit... este to mozme zmenit ptm naspat ale niekde som cital ze to moze byt potrebne
-
-
-
-
+        # if is_output:
+        #     self.a = int(self.a > 0.5)
+        # toto zaokruhlovanie budeme robit az pri uplnom "zverejnovani vysledku"... lebo zaujimaju nas aj male odchylky pocas ucenia

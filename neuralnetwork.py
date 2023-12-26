@@ -1,19 +1,5 @@
-import numpy as np
 import random
-import math
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-def relu(x):
-    return np.maximum(0, x)
-
-def sigmoid_dx(x):
-    sigmoid_x = sigmoid(x)
-    return sigmoid_x * (1 - sigmoid_x)
-
-def relu_dx(x):
-    return np.where(x > 0, 1, 0)
+from nn_utils import *
 
 class NN:
     """Cievova siet"""
@@ -64,42 +50,76 @@ class NN:
                 prev_values = []
 
     def get_output(self):
-        return self.layers[-1][0].value
+        return self.layers[-1][0].a
 
     def get_layer_values(self, layer_idx):
         for neuron in self.layers[layer_idx]:
-            yield neuron.value
+            yield neuron.a
 
-    def propagate_backwards(self, error):
-        pass
+    def propagate_backwards(self, desired_output):
+        learning_rate = 0.2
+        predicted_output = self.layers[-1][0].a
+        for layer_idx in range(len(self.layers) - 1, 0, -1):
+            for neuron_idx in range(self.layers[layer_idx]):
+                neuron = self.layers[layer_idx][neuron_idx]
+                # gradient = neuron_error * output(a) of the previous layer
+                # new weight/bias value = old - learning_rate * gradient
 
-    def loss_function(self, output, target):
-        return ((int(target) - int(output))**2)/2 # bad function for binary classification
-    # (https://en.wikipedia.org/wiki/Cross-entropy#Cross-entropy_loss_function_and_logistic_regression) ?
+                # calculate error for neuron in last layer
+                if layer_idx == len(self.layers) - 1:
+                    activation_dx = sigmoid_dx(neuron.a)
+                    loss_dx = loss_function_dx(desired_output, predicted_output)
+                    neuron.error = activation_dx * loss_dx
+                    
+                # calculate error for neuron in hidden layer
+                else:
+                    # TODO: Calculate error for non-last layer neuron
+                    # na toto uz nemam nervy sry mate :D uvidim zajtra ci sa podari
+                    # davam trz len freestyle
+                    error = 0
+                    for neuron_next_idx in range(self.layers[layer_idx + 1]):
+                        neuron_next = self.layers[layer_idx + 1][neuron_next_idx]
+                        error_next = neuron_next.error
+                        a_dx = neuron_next.weight[neuron_idx] * sigmoid_dx(neuron.a)
+                        error += error_next * a_dx
+                    neuron.error = error
+                    # end of freestyle pls check 
+                    # => https://brilliant.org/wiki/backpropagation/#:~:text=Backpropagation%2C%20short%20for%20%22backward%20propagation,to%20the%20neural%20network's%20weights.
+                    # presne v polovici tam pisu ako vypocitat error pre neuron v hidden layer
 
+                # calculate gradient for weights + adjust values
+                for weight_idx in range(len(neuron.weights)):
+                    gradient = neuron.error * neuron.weights[weight_idx]
+                    neuron.weights[weight_idx] -= learning_rate * gradient
+                # adjust bias
+                gradient = neuron.error * neuron.bias
+                neuron.bias -= learning_rate * gradient
+    
     def print_network(self):
         for i in range(len(self.layers)):
             print(f"Layer {i}:")
             for neuron in self.layers[i]:
-                print(f"Bias: {neuron.bias}, value: {neuron.value}")
+                print(f"Bias: {neuron.bias}, value: {neuron.a}")
 
 class Neuron:
 
     def __init__(self, prev_layer_wghts_count) -> None:
         self.weights = []
+        self.error = 0
         for _ in range(prev_layer_wghts_count):
             self.weights.append(random.uniform(0, 1))
         self.bias = random.uniform(0, 1)
 
     def calc_value(self, previous_layer, is_output=False):
-        value = 0
+        z = 0
         for i, prev_value in enumerate(previous_layer):
-            value += prev_value * self.weights[i]
-        value += self.bias
+            z += prev_value * self.weights[i]
+        self.z = z + self.bias
 
-        self.value = sigmoid(value)
+        self.a = sigmoid(z)
         if is_output:
-            self.value = (value > 0.5)
+            self.a = (self.a > 0.5)
+        # mozno sa to z aj a(namiesto len value) bude hodit... este to mozme zmenit ptm naspat ale niekde som cital ze to moze byt potrebne
 
 
 

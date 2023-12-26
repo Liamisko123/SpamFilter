@@ -4,11 +4,12 @@ import re
 import email as email_lib
 from corpus import Corpus
 from collections import Counter
+from neuralnetwork import NN
 
 class MyFiler:
 
     def __init__(self) -> None:
-        params = {
+        self.params = {
             "relative_word_freq": 0,
             "name_number": 0,
             "mail_length": 0,
@@ -17,14 +18,17 @@ class MyFiler:
             "odd_sending_hours": 0,
             "hypertext": 0
         }
+        self.network = NN(in_params=len(self.params))
         pass
         
     def train(self, path):
         self.freq_spam = Counter()
         self.freq_ham = Counter()
-        train_corpus = Corpus(path)
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
-        for file_name, content in train_corpus.emails():
+
+        # Analyze parameters from dataset
+        stats_corpus = Corpus(path)
+        for file_name, content in stats_corpus.emails():
             if truth[file_name] == "OK":
                 email = Email(content)
                 self.freq_ham += email.word_frequencies_in_body()
@@ -37,6 +41,14 @@ class MyFiler:
             self.rel_freq[key] = self.freq_spam[key] / (self.freq_spam[key] + self.freq_ham[key])
         print(self.rel_freq.most_common(100))
             
+        # Train the neural network
+        train_corpus = Corpus(path)
+        for file_name, content in stats_corpus.emails():
+            input = list(self.params[key] for key in self.params)
+            target = (truth[file_name] == "SPAM")
+            self.network.train(input, target)
+            break
+
 
     def test(self, path):
         test_corpus = Corpus(path)

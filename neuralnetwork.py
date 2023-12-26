@@ -60,7 +60,7 @@ class NN:
         learning_rate = 0.2
         predicted_output = self.layers[-1][0].a
         for layer_idx in range(len(self.layers) - 1, 0, -1):
-            for neuron_idx in range(self.layers[layer_idx]):
+            for neuron_idx in range(len(self.layers[layer_idx])):
                 neuron = self.layers[layer_idx][neuron_idx]
                 # gradient = neuron_error * output(a) of the previous layer
                 # new weight/bias value = old - learning_rate * gradient
@@ -77,10 +77,10 @@ class NN:
                     # na toto uz nemam nervy sry mate :D uvidim zajtra ci sa podari
                     # davam trz len freestyle
                     error = 0
-                    for neuron_next_idx in range(self.layers[layer_idx + 1]):
+                    for neuron_next_idx in range(len(self.layers[layer_idx + 1])):
                         neuron_next = self.layers[layer_idx + 1][neuron_next_idx]
                         error_next = neuron_next.error
-                        a_dx = neuron_next.weight[neuron_idx] * sigmoid_dx(neuron.a)
+                        a_dx = neuron_next.weights[neuron_idx] * sigmoid_dx(neuron.a)
                         error += error_next * a_dx
                     neuron.error = error
                     # end of freestyle pls check 
@@ -118,7 +118,7 @@ class Neuron:
 
         self.a = sigmoid(z)
         if is_output:
-            self.a = (self.a > 0.5)
+            self.a = int(self.a > 0.5)
         # mozno sa to z aj a(namiesto len value) bude hodit... este to mozme zmenit ptm naspat ale niekde som cital ze to moze byt potrebne
 
 

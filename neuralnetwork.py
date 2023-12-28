@@ -1,4 +1,5 @@
 import random
+import pickle
 
 from nn_utils import *
 
@@ -22,6 +23,9 @@ class NN:
 
         # Output
         self.layers.append([Neuron(neurons_in_layer)])
+
+    def save_network(self):
+        pass
     
     def propagate_forward(self, input):
         for layer_idx in range(len(self.layers)):

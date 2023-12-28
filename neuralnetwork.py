@@ -1,4 +1,5 @@
 import random
+
 from nn_utils import *
 
 class NN:
@@ -23,8 +24,6 @@ class NN:
         self.layers.append([Neuron(neurons_in_layer)])
     
     def propagate_forward(self, input):
-        layers_count = len(self.layers)
-
         for layer_idx in range(len(self.layers)):
             if layer_idx == 0:
                 for neuron in self.layers[layer_idx]:
@@ -74,6 +73,7 @@ class NN:
                 gradient = neuron.error
                 neuron.bias -= self.learning_rate * gradient
         # self.learning_rate /= 1.002
+        # TODO: fine tuning learning rate
     
     def print_network(self):
         for i in range(len(self.layers)):

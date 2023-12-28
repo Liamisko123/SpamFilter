@@ -3,8 +3,6 @@ import numpy as np
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def relu(x):
-    return np.maximum(0, x)
 
 def sigmoid_dx(x):
     sigmoid_x = sigmoid(x)
@@ -13,14 +11,25 @@ def sigmoid_dx(x):
 # def sigmoid_dx(x):
 #     return x * (1 - x)
 
+
+def loss_function(target, predicted):
+    # return ((target - predicted)**2)/2 # bad function for binary classification
+    # (https://en.wikipedia.org/wiki/Cross-entropy#Cross-entropy_loss_function_and_logistic_regression) ? 
+    return binary_cross_entropy_loss(target, predicted)
+
+def loss_function_dx(target, predicted):
+    # return predicted - target
+    return binary_cross_entropy_loss_derivative(target, predicted)
+
+def binary_cross_entropy_loss(target, predicted):
+    return - (target * np.log(predicted) + (1 - target) * np.log(1 - predicted))
+
+def binary_cross_entropy_loss_derivative(target, predicted):
+    epsilon = 1e-10
+    return - (target / (predicted + epsilon)) + (1 - target) / (1 - (predicted + epsilon))
+
 def relu_dx(x):
     return np.where(x > 0, 1, 0)
 
-def loss_function(output, target):
-    return ((int(target) - int(output))**2)/2 # bad function for binary classification
-    # (https://en.wikipedia.org/wiki/Cross-entropy#Cross-entropy_loss_function_and_logistic_regression) ? 
-    # -> agreed ale zatial mozme nechat tento MSE a zmenime to ked to vobec nebude fungovat
-    # nic by to vyrazne nemalo zmenit ked sa rozhodneme dat inu funkciu len proste tuto to zmenime a bude oukaj
-
-def loss_function_dx(output, target):
-    return int(target) - int(output)
+def relu(x):
+    return np.maximum(0, x)

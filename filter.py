@@ -1,6 +1,7 @@
 import os
 import utils
 import re
+import random
 import email as email_lib
 from corpus import Corpus
 from collections import Counter
@@ -14,16 +15,16 @@ def contains_html(input_string):
     return bool(pattern.search(input_string))
 
 NUMBER_OF_PARAMS = 7
+NUMBER_OF_LAYERS = 2
+NEURONS_IN_LAYER = 100
 class MyFiler:
 
     def __init__(self) -> None:
-        self.network = NN(NUMBER_OF_PARAMS)
-        self.train_iters = 10000
+        self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER)
+        self.train_iters = 50
         pass
         
     def train(self, path):
-        train_predictions = {}
-
         self.freq_spam = Counter()
         self.freq_ham = Counter()
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
@@ -39,34 +40,27 @@ class MyFiler:
                 self.freq_spam += email.word_frequencies_in_body()
 
         self.rel_freq = Counter()
-        for key, value in self.freq_spam.most_common(100):
+        for key, _ in self.freq_spam.most_common(100):
             self.rel_freq[key] = self.freq_spam[key] / (self.freq_spam[key] + self.freq_ham[key])
-        # print(self.rel_freq.most_common(100))
-        
-
         # Train the neural network
         iter_count = 0
+        all_params = []
         for file_name, content in email_corpus.emails():
             iter_count += 1
             email = Email(content)
             params = list(self.create_input(email).values())
             # train network on email
             target = (truth[file_name] == "SPAM")
-            for _ in range(self.train_iters):
-                self.network.propagate_forward(params)
-                self.network.propagate_backwards(target)
-            spamok = ["OK", "SPAM"]
-            train_predictions[file_name] = spamok[self.network.get_prediction(params)]
-            print(train_predictions[file_name])
+            all_params.append((params, target))
 
-           
-        utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), train_predictions)
-        print(quality.compute_quality_for_corpus(path))
-        
-            
-    
+        n_mails = len(all_params)
+        for _ in range(self.train_iters):
+            i = random.randint(0, n_mails-1)
+            self.network.propagate_forward(all_params[i][0])
+            self.network.propagate_backwards(all_params[i][1])
 
     def test(self, path):
+        print(40 * "-")
         test_corpus = Corpus(path)
         predictions = {}
         for file_name, content in test_corpus.emails():
@@ -74,9 +68,9 @@ class MyFiler:
             email = Email(content)
             params = list(self.create_input(email).values())
             predictions[file_name] = spamok[self.network.get_prediction(list(params))]
+            print(predictions[file_name] , f"{self.network.get_output():.5f}")
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
         print(quality.compute_quality_for_corpus(path))
-
 
     def create_input(self, email):
         params = {
@@ -91,13 +85,10 @@ class MyFiler:
 
         # common spam words
         mail_freq = email.word_frequencies_in_body()
-        count = 1
-        params["relative_word_freq"] = 0
+        params["relative_word_freq"] = random.random()
         for key in mail_freq:
             if key in self.rel_freq:
-                count += mail_freq[key]
-            params["relative_word_freq"] += self.rel_freq[key] * mail_freq[key]
-        params["relative_word_freq"] /= count
+                params["relative_word_freq"] += self.rel_freq[key]
 
         # number in sender name
         for char in email.sender:

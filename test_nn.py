@@ -7,7 +7,7 @@ desired_output2 = 1
 desired_output3 = 0
 desired_output4 = 1
 
-network = NN(5, 2, 20)
+network = NN(5, 2, 200)
 #  relative.., name_number, contains_html, in_blacklist, hypertext
 data1 = [0.8, 1, 1, 0, 0.65]
 data2 = [0.2, 0, 1, 0, 0.95]
@@ -23,7 +23,7 @@ print(network.get_prediction(data4))
 print("\n\n\n\n")
 
 
-iters = 100000
+iters = 100
 start = time.time()
 for i in range(iters):
 

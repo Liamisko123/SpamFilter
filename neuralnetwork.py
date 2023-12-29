@@ -1,5 +1,4 @@
 import random
-import pickle
 
 from nn_utils import *
 
@@ -8,7 +7,7 @@ class NN:
 
     def __init__(self, in_params=1, number_of_layers=2, neurons_in_layer=2) -> None:
         self.layers = []
-        self.learning_rate = 0.2
+        self.learning_rate = 0.001
         
         # Hidden layers
         for layer_idx in range(number_of_layers):
@@ -23,9 +22,6 @@ class NN:
 
         # Output
         self.layers.append([Neuron(neurons_in_layer)])
-
-    def save_network(self):
-        pass
     
     def propagate_forward(self, input):
         for layer_idx in range(len(self.layers)):

@@ -4,12 +4,13 @@ import nn_utils
 import re
 import random
 import email as email_lib
+import quality
+import string
+import pickle
 from corpus import Corpus
 from collections import Counter
 from neuralnetwork import NN
 from datetime import datetime
-import quality
-import string
 
 
 def contains_html(text):
@@ -22,14 +23,22 @@ def contains_link(text):
 
 NUMBER_OF_PARAMS = 7
 NUMBER_OF_LAYERS = 2
-NEURONS_IN_LAYER = 1000
+NEURONS_IN_LAYER = 10
 
 class MyFiler:
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER)
-        self.train_iters = 10000
-        pass
+        self.train_iters = 100000
+
+    def save_network(self):
+        with open("neural_network.pickle", "wb") as file:
+            pickle.dump(self.network, file, protocol=pickle.HIGHEST_PROTOCOL)
+        
+
+    def load_network(self):
+        with open("neural_network.pickle", "rb") as file:
+            self.network = pickle.load(file)
         
     def train(self, path):
         self.freq_spam = Counter()
@@ -54,29 +63,22 @@ class MyFiler:
         
         for key in self.freq_ham:
             self.freq_ham[key] /= ham_count
-        
-        # print(self.freq_spam.most_common(100))
-        # print()
-        # print(self.freq_ham.most_common(100))
-        # Train the neural network
+
         iter_count = 0
         all_params = []
         for file_name, content in email_corpus.emails():
             iter_count += 1
             email = Email(content)
             params = list(self.create_input(email).values())
-            # train network on email
             target = (truth[file_name] == "SPAM")
             all_params.append((params, target))
 
         n_mails = len(all_params)
-        i = 0
-        for _ in range(self.train_iters):
-            # print(all_params[i][0], int(all_params[i][1]))
-            self.network.propagate_forward(all_params[i][0])
-            self.network.propagate_backwards(int(all_params[i][1]))
-            i += 1
-            i = i % (n_mails-1)
+        for i in range(self.train_iters):
+            # train network on email
+            q = i % (n_mails-1)
+            self.network.propagate_forward(all_params[q][0])
+            self.network.propagate_backwards(int(all_params[q][1]))
 
     def test(self, path):
         print(40 * "-")
@@ -86,8 +88,8 @@ class MyFiler:
             spamok = ["OK", "SPAM"]
             email = Email(content)
             params = list(self.create_input(email).values())
-            predictions[file_name] = spamok[self.network.get_prediction(list(params))]
-            # print(f"{self.network.get_output():.5f}", predictions[file_name])
+            predictions[file_name] = spamok[self.network.get_prediction(params)]
+            # print(f"inp: {params}\t\t{self.network.get_output():.5f}") => great debugger
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
         print(quality.compute_quality_for_corpus(path))
 
@@ -142,8 +144,6 @@ class Email:
         time_xyz = email_object['date'].split(":")
         h = time_xyz[0][-2:]
         self.time = int(h)
-        # print(self.time)
-        # self.time = ...
         
         # TODO: possibly a multipart mail => toto som dal takzvane ctrl-c ctrl-v
         if email_object.is_multipart():

@@ -29,15 +29,34 @@ class MyFiler:
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER, LEARNING_RATE)
-        self.train_iters = 100
-        self.trained = False
-        
-
+        self.train_iters = 10000
+        self.train_network = False
+        self.load_network()
+        self.load_filter_data()
+    
     def save_network(self):
         with open("neural_network.pickle", "wb") as file:
             pickle.dump(self.network, file, protocol=pickle.HIGHEST_PROTOCOL)
         
-    def load_network(self):
+    def load_network(self): 
+        try:
+            with open("neural_network.pickle", "rb") as file:
+                self.network = pickle.load(file)
+        except FileNotFoundError:
+            print("Network data file not found.")
+
+    def save_filter_data(self):
+        with open("filter_data.pickle", "wb") as file:
+            pickle.dump(self.rel_freq, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def load_filter_data(self): 
+        try:
+            with open("filter_data.pickle", "rb") as file:
+                self.rel_freq = pickle.load(file) 
+        except FileNotFoundError:
+            print("Filter data file not found.")
+
+    def load_network(self): 
         try:
             with open("neural_network.pickle", "rb") as file:
                 self.network = pickle.load(file)
@@ -45,38 +64,38 @@ class MyFiler:
             print("Network data file not found.")
         
     def train(self, path, debug=False):
+        self.loaded_network = True
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
         train_corpus = Corpus(path)
 
         self.get_dataset_word_freqs(truth, train_corpus)
-
-        # Get input params and target outputs for each email 
-        all_params = []
-        for file_name, content in train_corpus.emails():
-            email = Email(content)
-            in_params = list(self.create_input(email).values())
-            target = (truth[file_name] == "SPAM")
-            all_params.append((in_params, target))
-
-        # Train the network
-        print(f"Training on each email in {path} {self.train_iters} times...")
-        n_mails = len(all_params)
-        for i in range(self.train_iters):
-            if debug:
-                print("Training iteration", i+1)
-            for m in range(n_mails):
-                self.network.propagate_forward(all_params[m][0])
-                self.network.propagate_backwards(int(all_params[m][1]))
-            self.network.learning_rate *= 0.998
         
-        print("Learning rate:", self.network.learning_rate)
-        self.trained = True
+        if self.train_network:   
+            # Get input params and target outputs for each email 
+            all_params = []
+            for file_name, content in train_corpus.emails():
+                email = Email(content)
+                in_params = list(self.create_input(email).values())
+                target = (truth[file_name] == "SPAM")
+                all_params.append((in_params, target))
+                
+            # Train the network
+            print(f"Training on each email in {path} {self.train_iters} times...")
+            n_mails = len(all_params)
+            for i in range(self.train_iters):
+                if debug:
+                    print("Training iteration", i+1)
+                for m in range(n_mails):
+                    self.network.propagate_forward(all_params[m][0])
+                    self.network.propagate_backwards(int(all_params[m][1]))
+                self.network.learning_rate *= 0.998
+            
+            print("Learning rate:", self.network.learning_rate)
+
+        self.save_filter_data()
+
 
     def test(self, path, debug=False):
-        if not self.trained:
-            print("The filter has not been trained!")
-            return
-        
         print(40 * "-")
         test_corpus = Corpus(path)
         predictions = {}

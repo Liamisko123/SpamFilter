@@ -72,8 +72,6 @@ class NN:
                 # adjust bias
                 gradient = neuron.error
                 neuron.bias -= self.learning_rate * gradient
-        # self.learning_rate /= 1.002
-        # TODO: fine tuning learning rate
     
     def print_network(self):
         for i in range(len(self.layers)):

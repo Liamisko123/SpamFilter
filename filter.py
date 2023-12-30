@@ -10,7 +10,6 @@ import pickle
 from corpus import Corpus
 from collections import Counter
 from neuralnetwork import NN
-from datetime import datetime
 
 
 def contains_html(text):
@@ -29,58 +28,51 @@ class MyFiler:
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER)
-        self.train_iters = 100000
+        self.train_iters = 100
+        self.trained = False
+        
 
     def save_network(self):
         with open("neural_network.pickle", "wb") as file:
             pickle.dump(self.network, file, protocol=pickle.HIGHEST_PROTOCOL)
         
-
     def load_network(self):
         with open("neural_network.pickle", "rb") as file:
             self.network = pickle.load(file)
         
-    def train(self, path):
-        self.freq_spam = Counter()
-        self.freq_ham = Counter()
+    def train(self, path, debug=False):
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
-        truth_counter = Counter(truth.values())
-        spam_count = truth_counter['SPAM']
-        ham_count = truth_counter['OK']
+        train_corpus = Corpus(path)
 
+        self.get_dataset_word_freqs(truth, train_corpus)
 
-        # Analyze parameters from dataset
-        email_corpus = Corpus(path)
-        for file_name, content in email_corpus.emails():
-            if truth[file_name] == "OK":
-                email = Email(content)
-                self.freq_ham += email.word_frequencies_in_body()
-            else:
-                email = Email(content)
-                self.freq_spam += email.word_frequencies_in_body()
-        for key in self.freq_spam:
-            self.freq_spam[key] /= spam_count
-        
-        for key in self.freq_ham:
-            self.freq_ham[key] /= ham_count
-
-        iter_count = 0
+        # Get input params and target outputs for each email 
         all_params = []
-        for file_name, content in email_corpus.emails():
-            iter_count += 1
+        for file_name, content in train_corpus.emails():
             email = Email(content)
-            params = list(self.create_input(email).values())
+            in_params = list(self.create_input(email).values())
             target = (truth[file_name] == "SPAM")
-            all_params.append((params, target))
+            all_params.append((in_params, target))
 
+        # Train the network
+        print(f"Training on each email in {path} {self.train_iters} times...")
         n_mails = len(all_params)
         for i in range(self.train_iters):
-            # train network on email
-            q = i % (n_mails-1)
-            self.network.propagate_forward(all_params[q][0])
-            self.network.propagate_backwards(int(all_params[q][1]))
+            if debug:
+                print("Training iteration", i+1)
+                print("Learning rate:", self.network.learning_rate)
+            for m in range(n_mails):
+                self.network.propagate_forward(all_params[m][0])
+                self.network.propagate_backwards(int(all_params[m][1]))
+            self.network.learning_rate *= 0.997
+        
+        self.trained = True
 
-    def test(self, path):
+    def test(self, path, debug=False):
+        if not self.trained:
+            print("The filter has not been trained!")
+            return
+        
         print(40 * "-")
         test_corpus = Corpus(path)
         predictions = {}
@@ -89,8 +81,13 @@ class MyFiler:
             email = Email(content)
             params = list(self.create_input(email).values())
             predictions[file_name] = spamok[self.network.get_prediction(params)]
-            # print(f"inp: {params}\t\t{self.network.get_output():.5f}") => great debugger
+            if debug:
+                for i in range(len(params)):
+                    params[i] = float(round(params[i], 2))
+                print(f"{file_name:.7s}…: {params}    \t{self.network.get_output():.5f}")
+
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
+        print(f"Classification quality for {path}:")
         print(quality.compute_quality_for_corpus(path))
 
     def create_input(self, email):
@@ -100,16 +97,20 @@ class MyFiler:
             "mail_length": 0.5,
             "contains_html": 0.5,
             "in_blacklist": 0.5,
-            "odd_sending_hours": 0.5,
+            "odd_sending_hours": 0,
             "contains_link": 0.5
         }
 
         # common spam words
         mail_freq = email.word_frequencies_in_body()
         params["relative_word_freq"] = random.random()
+        words_c = 1
         for key in mail_freq:
-            params["relative_word_freq"] += mail_freq[key] * (self.freq_spam[key] - self.freq_ham[key])
-        params["relative_word_freq"] = nn_utils.sigmoid(params["relative_word_freq"])
+            words_c += mail_freq[key]
+            params["relative_word_freq"] += self.rel_freq[key] * mail_freq[key]
+        params["relative_word_freq"] = nn_utils.sigmoid(3 * params["relative_word_freq"] / words_c)
+
+
         # number in sender name
         num_count = 0
         for char in email.sender:
@@ -123,10 +124,39 @@ class MyFiler:
         params["contains_link"] = int(email.contains_link)
 
         params["contains_html"] = int(email.contains_html)
+
         # odd sending hours
-        if email.time > 0 and email.time < 6:
-            params["odd_sending_hours"] = nn_utils.sigmoid(1 - abs(email.time - 3)/3)
+        if email.time >= 0 and email.time <= 6:
+            params["odd_sending_hours"] = nn_utils.sigmoid(1 - abs(email.time - 3)/4)
         return params
+    
+    def get_dataset_word_freqs(self, truth, corpus):
+        truth_counter = Counter(truth.values())
+        spam_count = truth_counter['SPAM']
+        ham_count = truth_counter['OK']
+
+        freq_spam = Counter()
+        freq_ham = Counter()
+        for file_name, content in corpus.emails():
+            if truth[file_name] == "OK":
+                email = Email(content)
+                freq_ham += email.word_frequencies_in_body()
+            else:
+                email = Email(content)
+                freq_spam += email.word_frequencies_in_body()
+        for key in freq_spam:
+            freq_spam[key] /= spam_count        
+        for key in freq_ham:
+            freq_ham[key] /= ham_count
+        
+        self.rel_freq = Counter()
+        for word in freq_spam.most_common(1000):
+            i = word[0]
+            # print(i, end='; ')
+            self.rel_freq[i] = (freq_spam[i]-freq_ham[i]) / (freq_spam[i]+freq_ham[i])
+        
+        # print(self.rel_freq.most_common(100))
+        
 
 class Email:
     def __init__(self, content) -> None:

@@ -23,11 +23,12 @@ def contains_link(text):
 NUMBER_OF_PARAMS = 7
 NUMBER_OF_LAYERS = 2
 NEURONS_IN_LAYER = 10
+LEARNING_RATE = 0.4
 
 class MyFiler:
 
     def __init__(self) -> None:
-        self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER)
+        self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER, LEARNING_RATE)
         self.train_iters = 100
         self.trained = False
         
@@ -37,8 +38,11 @@ class MyFiler:
             pickle.dump(self.network, file, protocol=pickle.HIGHEST_PROTOCOL)
         
     def load_network(self):
-        with open("neural_network.pickle", "rb") as file:
-            self.network = pickle.load(file)
+        try:
+            with open("neural_network.pickle", "rb") as file:
+                self.network = pickle.load(file)
+        except FileNotFoundError:
+            print("Network data file not found.")
         
     def train(self, path, debug=False):
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
@@ -60,12 +64,12 @@ class MyFiler:
         for i in range(self.train_iters):
             if debug:
                 print("Training iteration", i+1)
-                print("Learning rate:", self.network.learning_rate)
             for m in range(n_mails):
                 self.network.propagate_forward(all_params[m][0])
                 self.network.propagate_backwards(int(all_params[m][1]))
-            self.network.learning_rate *= 0.997
+            self.network.learning_rate *= 0.998
         
+        print("Learning rate:", self.network.learning_rate)
         self.trained = True
 
     def test(self, path, debug=False):
@@ -88,7 +92,11 @@ class MyFiler:
 
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
         print(f"Classification quality for {path}:")
-        print(quality.compute_quality_for_corpus(path))
+        q = quality.compute_quality_for_corpus(path)
+        print(q)
+        if q == 0.23154193872425916:
+            print("Warning: all entries were flagged as SPAM.")
+
 
     def create_input(self, email):
         params = {

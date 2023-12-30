@@ -3,3 +3,4 @@ venv/
 *.log
 .pytest_cache/
 .vscode/
+neural_network.pickle

@@ -5,9 +5,9 @@ from nn_utils import *
 class NN:
     """Cievova siet"""
 
-    def __init__(self, in_params=1, number_of_layers=2, neurons_in_layer=2) -> None:
+    def __init__(self, in_params=1, number_of_layers=2, neurons_in_layer=2, learning_rate=0.2) -> None:
         self.layers = []
-        self.learning_rate = 0.1
+        self.learning_rate = learning_rate
         
         # Hidden layers
         for layer_idx in range(number_of_layers):

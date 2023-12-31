@@ -1,8 +1,8 @@
 import os
-#from simplefilters import ParanoidFilter as filter
 from filter import MyFilter as filter
 
 new = filter()
-new.train(os.path.join(os.getcwd(), '1'), debug=False)
-new.test(os.path.join(os.getcwd(), '1'), debug=False)
+new.train_network = True
+new.train(os.path.join(os.getcwd(), '1'))
+new.test(os.path.join(os.getcwd(), '1'))
 new.test(os.path.join(os.getcwd(), '2'))

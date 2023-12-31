@@ -4,3 +4,4 @@ venv/
 .pytest_cache/
 .vscode/
 neural_network.pickle
+filter_data.pickle

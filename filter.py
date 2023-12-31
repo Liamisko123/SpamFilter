@@ -16,20 +16,21 @@ def contains_html(text):
     pattern = r'<[^>]*>'
     return bool(re.search(pattern, text))
 
-def contains_link(text):
+def count_links(text):
     pattern = r'\b(?:https?|ftp):\/\/\S+'
-    return bool(re.search(pattern, text))
+    return len(re.findall(pattern, text))
 
 NUMBER_OF_PARAMS = 7
 NUMBER_OF_LAYERS = 2
 NEURONS_IN_LAYER = 10
-LEARNING_RATE = 0.4
+LEARNING_RATE = 0.2         # to be tweaked
+LEARNING_SLOWDOWN = 0.997   # to be tweaked
 
 class MyFilter: 
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER, LEARNING_RATE)
-        self.train_iters = 10000
+        self.train_iters = 50
         self.train_network = False
         self.rel_freq = None
         self.load_network()
@@ -75,24 +76,26 @@ class MyFilter:
                 all_params.append((in_params, target))
                 
             # Train the network
-            print(f"Training on each email in {path} {self.train_iters} times...")
+            if debug:
+                print(f"Training on each email in {path} {self.train_iters} times...")
             n_mails = len(all_params)
             for i in range(self.train_iters):
-                if debug:
+                if debug == "all":
                     print("Training iteration", i+1)
                 for m in range(n_mails):
                     self.network.propagate_forward(all_params[m][0])
                     self.network.propagate_backwards(int(all_params[m][1]))
-                self.network.learning_rate *= 0.998
-            print("Learning rate:", self.network.learning_rate)
-
+                self.network.learning_rate *= LEARNING_SLOWDOWN
+            if debug:
+                print("Learning rate:", self.network.learning_rate)
             self.save_network()
 
         self.save_filter_data()
 
 
     def test(self, path, debug=False):
-        print(40 * "-")
+        if debug:
+            print(40 * "-")
         test_corpus = Corpus(path)
         predictions = {}
         for file_name, content in test_corpus.emails():
@@ -100,17 +103,21 @@ class MyFilter:
             email = Email(content)
             params = list(self.create_input(email).values())
             predictions[file_name] = spamok[self.network.get_prediction(params)]
-            if debug:
+            if debug == "all":
                 for i in range(len(params)):
                     params[i] = float(round(params[i], 2))
                 print(f"{file_name:.7s}…: {params}    \t{self.network.get_output():.5f}")
 
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
-        # print(f"Classification quality for {path}:")
-        # q = quality.compute_quality_for_corpus(path)
-        # print(q)
-        # if q == 0.23154193872425916:
-        #     print("Warning: all entries were flagged as SPAM.")
+        if debug:
+            print(f"Classification quality for {path}:")
+            q = quality.compute_quality_for_corpus(path)
+            print(q)
+            if q == 0.23154193872425916:
+                print("Warning: all entries were flagged as SPAM.")
+            elif q == 0.249185667752443:
+                print("Warning: all entries were flagged as OK.")
+
 
 
     def create_input(self, email):
@@ -121,7 +128,7 @@ class MyFilter:
             "contains_html": 0.5,
             "in_blacklist": 0.5,
             "odd_sending_hours": 0,
-            "contains_link": 0.5
+            "link_count": 0
         }
 
         # common spam words
@@ -133,7 +140,6 @@ class MyFilter:
             params["relative_word_freq"] += self.rel_freq[key] * mail_freq[key]
         params["relative_word_freq"] = nn_utils.sigmoid(3 * params["relative_word_freq"] / words_c)
 
-
         # number in sender name
         num_count = 0
         for char in email.sender:
@@ -141,11 +147,14 @@ class MyFilter:
                 num_count += 1
         if num_count:
             params["name_number"] = 0.5 + (num_count / len(email.sender))
-        mail_length = len(email.body)
-        params["mail_length"] = mail_length / (mail_length + 1)
+        
+        # number of words in body
+        params["mail_length"] = nn_utils.sigmoid(len(email.body) / 200 - 1)
 
-        params["contains_link"] = int(email.contains_link)
+        # number of links in body
+        params["link_count"] = nn_utils.sigmoid(int(email.link_count) - 3)
 
+        # html tags in body
         params["contains_html"] = int(email.contains_html)
 
         # odd sending hours
@@ -183,7 +192,6 @@ class Email:
         self.sender = None
         self.subject = None
         self.contains_html = False
-        self.contains_link = False
         self.body = ""
         self.parse_email(content)
 
@@ -210,13 +218,13 @@ class Email:
                     break
         else:
             self.body = email_object.get_payload()
+
         if contains_html(self.body):
             self.contains_html = True
             self.body = re.sub(r"<[^>]*>", " ", self.body)
             self.body = re.sub(r"&nbsp", " ", self.body)
 
-        if contains_link(self.body):
-            self.contains_link = True
+        self.link_count = count_links(self.body)
 
     def word_frequencies_in_body(self):
         alphabet = string.ascii_lowercase

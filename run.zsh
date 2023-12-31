@@ -1,5 +1,5 @@
-stop=0
-for rep in `seq 50`
+best=0.4
+for rep in `seq 100`
     do
     echo - - attempt \#$rep - -
     rm neural_network.pickle
@@ -12,13 +12,11 @@ for rep in `seq 50`
         echo $result1
         echo $result2
         target=0.8
-        if (( $(echo "$result2 > $target" | bc -l) )); then
-            stop=1
-            break
+        if (( $(echo "$result2 > $best" | bc -l) )); then
+            best=$result2
+            echo new: $best
+            cp neural_network.pickle nn_best.pickle
         fi
     done
-    if (( $stop == 1 )); then
-        echo "Found satisfactory network, saved to neural_network.pickle"
-        break
-    fi
 done
+echo best: $best

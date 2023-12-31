@@ -25,12 +25,13 @@ NUMBER_OF_LAYERS = 2
 NEURONS_IN_LAYER = 10
 LEARNING_RATE = 0.4
 
-class MyFiler:
+class MyFilter: 
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER, LEARNING_RATE)
         self.train_iters = 10000
         self.train_network = False
+        self.rel_freq = None
         self.load_network()
         self.load_filter_data()
     
@@ -56,19 +57,13 @@ class MyFiler:
         except FileNotFoundError:
             print("Filter data file not found.")
 
-    def load_network(self): 
-        try:
-            with open("neural_network.pickle", "rb") as file:
-                self.network = pickle.load(file)
-        except FileNotFoundError:
-            print("Network data file not found.")
-        
     def train(self, path, debug=False):
         self.loaded_network = True
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
         train_corpus = Corpus(path)
 
-        self.get_dataset_word_freqs(truth, train_corpus)
+        if not self.rel_freq:
+            self.get_dataset_word_freqs(truth, train_corpus)
         
         if self.train_network:   
             # Get input params and target outputs for each email 
@@ -89,8 +84,9 @@ class MyFiler:
                     self.network.propagate_forward(all_params[m][0])
                     self.network.propagate_backwards(int(all_params[m][1]))
                 self.network.learning_rate *= 0.998
-            
             print("Learning rate:", self.network.learning_rate)
+
+            self.save_network()
 
         self.save_filter_data()
 
@@ -110,11 +106,11 @@ class MyFiler:
                 print(f"{file_name:.7s}…: {params}    \t{self.network.get_output():.5f}")
 
         utils.write_classification_to_file(os.path.join(path, "!prediction.txt"), predictions)
-        print(f"Classification quality for {path}:")
-        q = quality.compute_quality_for_corpus(path)
-        print(q)
-        if q == 0.23154193872425916:
-            print("Warning: all entries were flagged as SPAM.")
+        # print(f"Classification quality for {path}:")
+        # q = quality.compute_quality_for_corpus(path)
+        # print(q)
+        # if q == 0.23154193872425916:
+        #     print("Warning: all entries were flagged as SPAM.")
 
 
     def create_input(self, email):
@@ -130,7 +126,7 @@ class MyFiler:
 
         # common spam words
         mail_freq = email.word_frequencies_in_body()
-        params["relative_word_freq"] = random.random()
+        params["relative_word_freq"] = 0
         words_c = 1
         for key in mail_freq:
             words_c += mail_freq[key]
@@ -179,10 +175,7 @@ class MyFiler:
         self.rel_freq = Counter()
         for word in freq_spam.most_common(1000):
             i = word[0]
-            # print(i, end='; ')
             self.rel_freq[i] = (freq_spam[i]-freq_ham[i]) / (freq_spam[i]+freq_ham[i])
-        
-        # print(self.rel_freq.most_common(100))
         
 
 class Email:
@@ -198,11 +191,14 @@ class Email:
         email_object = email_lib.message_from_string(content)
         self.sender = email_object['from']
         self.subject = email_object['subject']
-        time_xyz = email_object['date'].split(":")
-        h = time_xyz[0][-2:]
-        self.time = int(h)
-        
-        # TODO: possibly a multipart mail => toto som dal takzvane ctrl-c ctrl-v
+
+        if email_object['date']:
+            time_xyz = email_object['date'].split(":")
+            h = time_xyz[0][-2:]
+            self.time = int(h)
+        else:
+            self.time = 12
+            
         if email_object.is_multipart():
             for part in email_object.walk():
                 ctype = part.get_content_type()
@@ -214,7 +210,6 @@ class Email:
                     break
         else:
             self.body = email_object.get_payload()
-        # TODO: parse html
         if contains_html(self.body):
             self.contains_html = True
             self.body = re.sub(r"<[^>]*>", " ", self.body)

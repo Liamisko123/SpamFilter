@@ -11,20 +11,11 @@ from corpus import Corpus
 from collections import Counter
 from neuralnetwork import NN
 
-
-def contains_html(text):
-    pattern = r'<[^>]*>'
-    return bool(re.search(pattern, text))
-
-def count_links(text):
-    pattern = r'\b(?:https?|ftp):\/\/\S+'
-    return len(re.findall(pattern, text))
-
 NUMBER_OF_PARAMS = 7
 NUMBER_OF_LAYERS = 2
 NEURONS_IN_LAYER = 10
-LEARNING_RATE = 0.2         # to be tweaked
-LEARNING_SLOWDOWN = 0.997   # to be tweaked
+LEARNING_RATE = 0.2
+# LEARNING_SLOWDOWN = 0.997
 
 class MyFilter: 
 
@@ -62,6 +53,7 @@ class MyFilter:
         self.loaded_network = True
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
         train_corpus = Corpus(path)
+        
 
         if not self.rel_freq:
             self.get_dataset_word_freqs(truth, train_corpus)
@@ -85,7 +77,7 @@ class MyFilter:
                 for m in range(n_mails):
                     self.network.propagate_forward(all_params[m][0])
                     self.network.propagate_backwards(int(all_params[m][1]))
-                self.network.learning_rate *= LEARNING_SLOWDOWN
+                # self.network.learning_rate *= LEARNING_SLOWDOWN
             if debug:
                 print("Learning rate:", self.network.learning_rate)
             self.save_network()
@@ -219,12 +211,12 @@ class Email:
         else:
             self.body = email_object.get_payload()
 
-        if contains_html(self.body):
+        if utils.contains_html(self.body):
             self.contains_html = True
             self.body = re.sub(r"<[^>]*>", " ", self.body)
             self.body = re.sub(r"&nbsp", " ", self.body)
 
-        self.link_count = count_links(self.body)
+        self.link_count = utils.count_links(self.body)
 
     def word_frequencies_in_body(self):
         alphabet = string.ascii_lowercase

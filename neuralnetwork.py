@@ -2,8 +2,9 @@ import random
 
 from nn_utils import *
 
+SPAM_TRESHOLD = 0.65
 class NN:
-    """Cievova siet"""
+    """Neural network with sigmoid activation function"""
 
     def __init__(self, in_params=1, number_of_layers=2, neurons_in_layer=2, learning_rate=0.2) -> None:
         self.layers = []
@@ -24,6 +25,7 @@ class NN:
         self.layers.append([Neuron(neurons_in_layer)])
     
     def propagate_forward(self, input):
+        """Forward propagation => get output for given input"""
         for layer_idx in range(len(self.layers)):
             if layer_idx == 0:
                 for neuron in self.layers[layer_idx]:
@@ -35,10 +37,12 @@ class NN:
                 prev_values = []
 
     def get_prediction(self, input):
+        """Return 0 / 1 calculated in the last forward propagation"""
         self.propagate_forward(input)
-        return self.layers[-1][0].a > 0.5
+        return self.layers[-1][0].a > SPAM_TRESHOLD
     
     def get_output(self):
+        """Return calculated value of the last forward propagation"""
         return self.layers[-1][0].a
 
     def get_layer_values(self, layer_idx):
@@ -46,7 +50,7 @@ class NN:
             yield neuron.a
 
     def propagate_backwards(self, target):
-        # => https://brilliant.org/wiki/backpropagation/#:~:text=Backpropagation%2C%20short%20for%20%22backward%20propagation,to%20the%20neural%20network's%20weights.
+        """Adjust neural network weights and biases"""
         prediction = self.layers[-1][0].a
         for layer_idx in range(len(self.layers) - 1, 0, -1):
             for neuron_idx in range(len(self.layers[layer_idx])):
@@ -80,6 +84,7 @@ class NN:
                 print(f"\tb: {neuron.bias}\tw: {[f'{w:.3f}' for w in neuron.weights]}\tz: {neuron.z}\ta: {neuron.a}")
 
 class Neuron:
+    """!Neuron!"""
 
     def __init__(self, prev_layer_wghts_count) -> None:
         self.weights = []
@@ -89,6 +94,7 @@ class Neuron:
         self.bias = random.uniform(-1, 1)
 
     def calc_value(self, previous_layer):
+        """Calculate the value of the neuron based on the previous layer's values"""
         z = 0
         for i, prev_value in enumerate(previous_layer):
             z += prev_value * self.weights[i]

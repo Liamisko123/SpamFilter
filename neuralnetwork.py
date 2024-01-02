@@ -2,7 +2,7 @@ import random
 
 from nn_utils import *
 
-SPAM_TRESHOLD = 0.65
+SPAM_TRESHOLD = 0.50
 class NN:
     """Neural network with sigmoid activation function"""
 
@@ -50,7 +50,8 @@ class NN:
             yield neuron.a
 
     def propagate_backwards(self, target):
-        """Adjust neural network weights and biases"""
+        """Correct neural network values"""
+        # => https://brilliant.org/wiki/backpropagation/#:~:text=Backpropagation%2C%20short%20for%20%22backward%20propagation,to%20the%20neural%20network's%20weights.
         prediction = self.layers[-1][0].a
         for layer_idx in range(len(self.layers) - 1, 0, -1):
             for neuron_idx in range(len(self.layers[layer_idx])):
@@ -90,8 +91,8 @@ class Neuron:
         self.weights = []
         self.error = 0
         for _ in range(prev_layer_wghts_count):
-            self.weights.append(random.uniform(-1, 1))
-        self.bias = random.uniform(-1, 1)
+            self.weights.append(random.uniform(-0.75, 0.75))
+        self.bias = random.uniform(-0.5, 0.5)
 
     def calc_value(self, previous_layer):
         """Calculate the value of the neuron based on the previous layer's values"""
@@ -101,4 +102,3 @@ class Neuron:
         self.z = z + self.bias
 
         self.a = sigmoid(z)
-        # toto zaokruhlovanie budeme robit az pri uplnom "zverejnovani vysledku"... lebo zaujimaju nas aj male odchylky pocas ucenia

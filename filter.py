@@ -11,20 +11,24 @@ from corpus import Corpus
 from collections import Counter
 from neuralnetwork import NN
 
+OK_SPAM = ["OK", "SPAM"]
 NUMBER_OF_PARAMS = 7
 NUMBER_OF_LAYERS = 2
 NEURONS_IN_LAYER = 10
-LEARNING_RATE = 0.2
+LEARNING_RATE = 0.1
 # LEARNING_SLOWDOWN = 0.997
 
 class MyFilter: 
+    """A filter that uses a neural network to detect spam"""
 
     def __init__(self) -> None:
         self.network = NN(NUMBER_OF_PARAMS, NUMBER_OF_LAYERS, NEURONS_IN_LAYER, LEARNING_RATE)
         self.train_iters = 50
         self.train_network = False
         self.rel_freq = None
+        self.blacklist = set()
         self.load_network()
+        self.load_blacklist()
         self.load_filter_data()
     
     def save_network(self):
@@ -38,6 +42,17 @@ class MyFilter:
         except FileNotFoundError:
             print("Network data file not found.")
 
+    def save_blacklist(self):
+        with open("blacklist.pickle", "wb") as file:
+            pickle.dump(self.blacklist, file, protocol=pickle.HIGHEST_PROTOCOL)
+        
+    def load_blacklist(self): 
+        try:
+            with open("blacklist.pickle", "rb") as file:
+                self.blacklist = pickle.load(file)
+        except FileNotFoundError:
+            print("Blacklist file not found.")
+
     def save_filter_data(self):
         with open("filter_data.pickle", "wb") as file:
             pickle.dump(self.rel_freq, file, protocol=pickle.HIGHEST_PROTOCOL)
@@ -50,6 +65,7 @@ class MyFilter:
             print("Filter data file not found.")
 
     def train(self, path, debug=False):
+        """Train filter on dataset in provided path"""
         self.loaded_network = True
         truth = utils.read_classification_from_file(os.path.join(path, "!truth.txt"))
         train_corpus = Corpus(path)
@@ -59,7 +75,7 @@ class MyFilter:
             self.get_dataset_word_freqs(truth, train_corpus)
         
         if self.train_network:   
-            # Get input params and target outputs for each email 
+            # Get input params and target outputs for each email
             all_params = []
             for file_name, content in train_corpus.emails():
                 email = Email(content)
@@ -83,18 +99,24 @@ class MyFilter:
             self.save_network()
 
         self.save_filter_data()
+        self.save_blacklist()
 
 
     def test(self, path, debug=False):
+        """Test filter on dataset and save prediction for later assessment"""
         if debug:
             print(40 * "-")
         test_corpus = Corpus(path)
         predictions = {}
         for file_name, content in test_corpus.emails():
-            spamok = ["OK", "SPAM"]
             email = Email(content)
             params = list(self.create_input(email).values())
-            predictions[file_name] = spamok[self.network.get_prediction(params)]
+
+            if email.sender in self.blacklist:
+                predictions[file_name] = OK_SPAM[1]
+            else:
+                predictions[file_name] = OK_SPAM[self.network.get_prediction(params)]
+
             if debug == "all":
                 for i in range(len(params)):
                     params[i] = float(round(params[i], 2))
@@ -113,6 +135,7 @@ class MyFilter:
 
 
     def create_input(self, email):
+        """Returns dictionary filled with data describing the mail"""
         params = {
             "relative_word_freq": 0,
             "name_number": 0,
@@ -155,12 +178,14 @@ class MyFilter:
         return params
     
     def get_dataset_word_freqs(self, truth, corpus):
+        """Create dictionary of relative word frequencies in spam and ham mails"""
         truth_counter = Counter(truth.values())
         spam_count = truth_counter['SPAM']
         ham_count = truth_counter['OK']
 
         freq_spam = Counter()
         freq_ham = Counter()
+
         for file_name, content in corpus.emails():
             if truth[file_name] == "OK":
                 email = Email(content)
@@ -168,6 +193,7 @@ class MyFilter:
             else:
                 email = Email(content)
                 freq_spam += email.word_frequencies_in_body()
+                self.blacklist.add(email.sender)
         for key in freq_spam:
             freq_spam[key] /= spam_count        
         for key in freq_ham:
@@ -180,6 +206,8 @@ class MyFilter:
         
 
 class Email:
+    """Object containing all information regarding the provided mail"""
+    
     def __init__(self, content) -> None:
         self.sender = None
         self.subject = None
@@ -219,6 +247,7 @@ class Email:
         self.link_count = utils.count_links(self.body)
 
     def word_frequencies_in_body(self):
+        """Calculate word frequencies in the dataset for spam and ham emails"""
         alphabet = string.ascii_lowercase
         self.body = self.body.lower().strip()
         final_str = []
